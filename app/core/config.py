@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
     ALLOWED_ORIGINS: List[str] = ["*"]
+    STORAGE_DIR: str = "./results"
 
     class Config:
         case_sensitive = True

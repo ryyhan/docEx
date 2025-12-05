@@ -4,6 +4,8 @@ from tempfile import NamedTemporaryFile
 from fastapi import UploadFile
 from docling.document_converter import DocumentConverter
 from app.schemas.extraction import ExtractionResponse, TableData
+from app.core.config import settings
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +43,43 @@ class ExtractionService:
             
             logger.info("Extraction completed successfully")
             
+            logger.info(f"Markdown content type: {type(markdown_content)}")
+            logger.info(f"Tables type: {type(tables)}")
+            if tables:
+                logger.info(f"Table 0 type: {type(tables[0])}")
+            logger.info(f"Filename type: {type(file.filename)}")
+            logger.info(f"Page count type: {type(doc.num_pages)}")
+            
+            # Defensive coding to avoid serialization errors
+            page_count = doc.num_pages
+            if callable(page_count):
+                page_count = page_count()
+            
             return ExtractionResponse(
-                markdown=markdown_content,
+                markdown=str(markdown_content),
                 tables=tables,
                 metadata={
-                    "filename": file.filename,
-                    "page_count": doc.num_pages
+                    "filename": str(file.filename),
+                    "page_count": int(page_count) if isinstance(page_count, (int, float, str)) else 0
                 }
             )
+
+    async def save_markdown(self, content: str, original_filename: str) -> str:
+        """
+        Saves the markdown content to a file in the storage directory.
+        Returns the absolute path of the saved file.
+        """
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = Path(original_filename).stem
+        filename = f"{base_name}_{timestamp}.md"
+        
+        storage_path = Path(settings.STORAGE_DIR)
+        storage_path.mkdir(parents=True, exist_ok=True)
+        
+        file_path = storage_path / filename
+        
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+            
+        logger.info(f"Saved markdown to: {file_path}")
+        return str(file_path.absolute())
