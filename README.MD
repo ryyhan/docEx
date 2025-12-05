@@ -8,6 +8,8 @@ DocEx is a robust document extraction backend built with [FastAPI](https://fasta
 -   **Table Extraction**: Identifies and extracts tables from documents into structured data (JSON/DataFrame-ready).
 -   **FastAPI Powered**: High-performance, easy-to-use REST API.
 -   **Docker Ready**: Includes a Dockerfile for easy containerization and deployment.
+-   **Performance Optimized**: Configurable OCR and Table Extraction settings.
+-   **Warmup Endpoint**: Pre-load models for faster first-request performance.
 -   **Swagger UI**: Automatic interactive API documentation.
 
 ## Requirements
@@ -74,7 +76,34 @@ Once the server is running, you can access the interactive API documentation at:
 Upload a file to extract its content.
 
 **Request:**
+**Request:**
 -   `file`: The document file to upload (multipart/form-data).
+-   `ocr_enabled`: (Optional) Enable OCR for scanned documents. Default: `true`. Set to `false` for faster processing of digital PDFs.
+-   `table_extraction_enabled`: (Optional) Enable advanced table structure recognition. Default: `true`.
+
+#### `POST /api/v1/extract-and-save`
+
+Same as `/extract`, but saves the resulting Markdown file to the server's storage directory.
+
+**Response:**
+```json
+{
+  "message": "Extraction successful and file saved.",
+  "saved_path": "/path/to/results/filename_timestamp.md",
+  "extraction": { ... }
+}
+```
+
+#### `POST /api/v1/warmup`
+
+Triggers the download and loading of OCR and Table Extraction models. Call this once at startup to avoid delays on the first request.
+
+**Response:**
+```json
+{
+  "message": "Warmup completed successfully"
+}
+```
 
 **Response:**
 ```json
@@ -103,6 +132,13 @@ Health check endpoint to verify the service is running.
   "status": "ok"
 }
 ```
+
+## Performance Optimization
+
+Docling uses powerful AI models for OCR and Table Extraction. These models are downloaded on the first run, which can take time.
+
+1.  **Warmup**: Call `POST /api/v1/warmup` immediately after deployment to download models.
+2.  **Disable OCR**: If you are processing digital-native PDFs (not scanned images), set `ocr_enabled=false` in your request to significantly speed up extraction.
 
 ## Configuration
 
