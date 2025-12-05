@@ -14,7 +14,7 @@ from app.schemas.extraction import ExtractionResponse, TableData
 from app.schemas.enums import VlmMode
 from app.core.config import settings
 import datetime
-from typing import Optional
+from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -110,19 +110,61 @@ class ExtractionService:
             logger.info(f"Filename type: {type(file.filename)}")
             logger.info(f"Page count type: {type(doc.num_pages)}")
             
-            # Defensive coding to avoid serialization errors
-            page_count = doc.num_pages
-            if callable(page_count):
-                page_count = page_count()
-            
             return ExtractionResponse(
-                markdown=str(markdown_content),
+                markdown=markdown_content,
                 tables=tables,
                 metadata={
-                    "filename": str(file.filename),
-                    "page_count": int(page_count) if isinstance(page_count, (int, float, str)) else 0
+                    "filename": file.filename,
+                    "page_count": doc.num_pages
                 }
             )
+
+    async def extract_from_path(self, file_path: Union[str, Path], ocr_enabled: bool = True, table_extraction_enabled: bool = True, vlm_mode: VlmMode = VlmMode.NONE, vlm_model_id: Optional[str] = None) -> ExtractionResponse:
+        """
+        Extracts content from a local file path. Useful for programmatic usage.
+        """
+        path_obj = Path(file_path)
+        if not path_obj.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        logger.info(f"Starting extraction for local file: {path_obj.name}")
+        
+        # Configure pipeline based on options
+        pipeline_options = self._get_pipeline_options(ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
+        
+        # Create a new converter instance with specific options
+        converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            }
+        )
+        
+        # Convert the document
+        result = converter.convert(path_obj)
+        doc = result.document
+        
+        # Extract markdown
+        markdown_content = doc.export_to_markdown()
+        
+        # Extract tables
+        tables = []
+        if table_extraction_enabled:
+            for table in doc.tables:
+                grid = table.export_to_dataframe()
+                if not grid.empty:
+                    tables.append(TableData(
+                        data=grid.values.tolist(),
+                        headers=grid.columns.tolist()
+                    ))
+        
+        return ExtractionResponse(
+            markdown=markdown_content,
+            tables=tables,
+            metadata={
+                "filename": path_obj.name,
+                "page_count": doc.num_pages
+            }
+        )
 
     async def save_markdown(self, content: str, original_filename: str) -> str:
         """
