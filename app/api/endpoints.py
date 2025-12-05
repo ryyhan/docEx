@@ -1,6 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from app.services.extraction import ExtractionService
 from app.schemas.extraction import ExtractionResponse
+from app.schemas.enums import VlmMode
+from typing import Optional
 
 router = APIRouter()
 
@@ -13,13 +15,15 @@ async def extract_document(
     file: UploadFile = File(...),
     ocr_enabled: bool = Form(True),
     table_extraction_enabled: bool = Form(True),
+    vlm_mode: VlmMode = Form(VlmMode.NONE),
+    vlm_model_id: Optional[str] = Form(None),
     service: ExtractionService = Depends(get_extraction_service)
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
     try:
-        return await service.extract(file, ocr_enabled, table_extraction_enabled)
+        return await service.extract(file, ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -28,13 +32,15 @@ async def extract_and_save_document(
     file: UploadFile = File(...),
     ocr_enabled: bool = Form(True),
     table_extraction_enabled: bool = Form(True),
+    vlm_mode: VlmMode = Form(VlmMode.NONE),
+    vlm_model_id: Optional[str] = Form(None),
     service: ExtractionService = Depends(get_extraction_service)
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
     try:
-        extraction_response = await service.extract(file, ocr_enabled, table_extraction_enabled)
+        extraction_response = await service.extract(file, ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
         saved_path = await service.save_markdown(extraction_response.markdown, file.filename)
         return {
             "message": "Extraction successful and file saved.",
@@ -46,10 +52,12 @@ async def extract_and_save_document(
 
 @router.post("/warmup")
 async def warmup_service(
+    vlm_mode: VlmMode = Form(VlmMode.NONE),
+    vlm_model_id: Optional[str] = Form(None),
     service: ExtractionService = Depends(get_extraction_service)
 ):
     try:
-        service.warmup()
+        service.warmup(vlm_mode, vlm_model_id)
         return {"message": "Warmup completed successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

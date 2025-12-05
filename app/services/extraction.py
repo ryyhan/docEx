@@ -4,29 +4,67 @@ from tempfile import NamedTemporaryFile
 from fastapi import UploadFile
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
+from docling.datamodel.pipeline_options import (
+    PdfPipelineOptions, 
+    TableFormerMode,
+    PictureDescriptionVlmOptions,
+    PictureDescriptionApiOptions
+)
 from app.schemas.extraction import ExtractionResponse, TableData
+from app.schemas.enums import VlmMode
 from app.core.config import settings
 import datetime
+from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_VLM_PROMPT = """
+Analyze the provided image and extract all relevant information.
+If the image contains text, transcribe it accurately.
+If it's a diagram, chart, or any visual representation, describe its key elements, labels, and the relationships or trends it conveys.
+Focus on factual details and avoid subjective interpretations.
+Present the extracted information in a structured markdown format, prioritizing clarity and completeness.
+"""
 
 class ExtractionService:
     def __init__(self):
         self.converter = DocumentConverter()
 
-    def _get_pipeline_options(self, ocr_enabled: bool, table_extraction_enabled: bool) -> PdfPipelineOptions:
+    def _get_pipeline_options(self, ocr_enabled: bool, table_extraction_enabled: bool, vlm_mode: VlmMode = VlmMode.NONE, vlm_model_id: Optional[str] = None) -> PdfPipelineOptions:
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = ocr_enabled
         pipeline_options.do_table_structure = table_extraction_enabled
         pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
+        
+        # Determine prompt
+        prompt = settings.VLM_PROMPT if settings.VLM_PROMPT != "default" else DEFAULT_VLM_PROMPT
+        
+        if vlm_mode == VlmMode.LOCAL:
+            pipeline_options.do_picture_description = True
+            repo_id = vlm_model_id if vlm_model_id else "HuggingFaceTB/SmolVLM-256M-Instruct"
+            pipeline_options.picture_description_options = PictureDescriptionVlmOptions(
+                repo_id=repo_id,
+                prompt=prompt
+            )
+        elif vlm_mode == VlmMode.API:
+            if not settings.OPENAI_API_KEY:
+                logger.warning("VLM API mode requested but OPENAI_API_KEY is not set. Skipping image description.")
+            else:
+                pipeline_options.do_picture_description = True
+                model = vlm_model_id if vlm_model_id else "gpt-4o"
+                pipeline_options.picture_description_options = PictureDescriptionApiOptions(
+                    api_key=settings.OPENAI_API_KEY,
+                    model=model,
+                    prompt=prompt
+                )
+        
         return pipeline_options
 
-    async def extract(self, file: UploadFile, ocr_enabled: bool = True, table_extraction_enabled: bool = True) -> ExtractionResponse:
+    async def extract(self, file: UploadFile, ocr_enabled: bool = True, table_extraction_enabled: bool = True, vlm_mode: VlmMode = VlmMode.NONE, vlm_model_id: Optional[str] = None) -> ExtractionResponse:
         logger.info(f"Starting extraction for file: {file.filename}")
         
         # Configure pipeline based on options
-        pipeline_options = self._get_pipeline_options(ocr_enabled, table_extraction_enabled)
+        pipeline_options = self._get_pipeline_options(ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
         
         # Create a new converter instance with specific options for this request
         # Note: In a production scenario, we might want to cache converters with different configs
@@ -106,14 +144,14 @@ class ExtractionService:
         logger.info(f"Saved markdown to: {file_path}")
         return str(file_path.absolute())
 
-    def warmup(self):
+    def warmup(self, vlm_mode: VlmMode = VlmMode.NONE, vlm_model_id: Optional[str] = None):
         """
         Triggers the download of necessary models (OCR, Table Extraction) by running a dummy conversion.
         """
-        logger.info("Starting warmup...")
+        logger.info(f"Starting warmup with vlm_mode={vlm_mode}...")
         
         # Enable everything to force download
-        pipeline_options = self._get_pipeline_options(ocr_enabled=True, table_extraction_enabled=True)
+        pipeline_options = self._get_pipeline_options(ocr_enabled=True, table_extraction_enabled=True, vlm_mode=vlm_mode, vlm_model_id=vlm_model_id)
         converter = DocumentConverter(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
