@@ -9,6 +9,7 @@ DocEx is a robust document extraction backend built with [FastAPI](https://fasta
 -   **FastAPI Powered**: High-performance, easy-to-use REST API.
 -   **Docker Ready**: Includes a Dockerfile for easy containerization and deployment.
 -   **Performance Optimized**: Configurable OCR and Table Extraction settings.
+-   **Image Description**: Optional VLM support (Local or API) to describe images in documents.
 -   **Warmup Endpoint**: Pre-load models for faster first-request performance.
 -   **Swagger UI**: Automatic interactive API documentation.
 
@@ -80,6 +81,7 @@ Upload a file to extract its content.
 -   `file`: The document file to upload (multipart/form-data).
 -   `ocr_enabled`: (Optional) Enable OCR for scanned documents. Default: `true`. Set to `false` for faster processing of digital PDFs.
 -   `table_extraction_enabled`: (Optional) Enable advanced table structure recognition. Default: `true`.
+-   `vlm_mode`: (Optional) Enable Image Description. Options: `none` (default), `local` (uses SmolVLM), `api` (uses OpenAI GPT-4o).
 
 #### `POST /api/v1/extract-and-save`
 
@@ -139,6 +141,26 @@ Docling uses powerful AI models for OCR and Table Extraction. These models are d
 
 1.  **Warmup**: Call `POST /api/v1/warmup` immediately after deployment to download models.
 2.  **Disable OCR**: If you are processing digital-native PDFs (not scanned images), set `ocr_enabled=false` in your request to significantly speed up extraction.
+
+## Image Description (VLM)
+
+You can enable image description to replace `<!-- image -->` tags with actual descriptions.
+
+### Modes
+1.  **Local (`vlm_mode="local"`)**:
+    -   Uses `HuggingFaceTB/SmolVLM-256M-Instruct`.
+    -   **Pros**: Free, private.
+    -   **Cons**: Requires ~1-2GB RAM, slower warmup.
+2.  **API (`vlm_mode="api"`)**:
+    -   Uses OpenAI GPT-4o.
+    -   **Pros**: Fast, high quality, no local model download.
+    -   **Cons**: Costs money, requires `OPENAI_API_KEY`.
+
+### Setup for API Mode
+Set the `OPENAI_API_KEY` environment variable:
+```bash
+export OPENAI_API_KEY="sk-..."
+```
 
 ## Configuration
 
