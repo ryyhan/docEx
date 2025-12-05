@@ -41,9 +41,10 @@ class ExtractionService:
         
         if vlm_mode == VlmMode.LOCAL:
             pipeline_options.do_picture_description = True
-            repo_id = vlm_model_id if vlm_model_id else "HuggingFaceTB/SmolVLM-256M-Instruct"
+            # Handle case where Swagger UI sends "string" as value
+            model_to_use = vlm_model_id if vlm_model_id and vlm_model_id != "string" else "HuggingFaceTB/SmolVLM-256M-Instruct"
             pipeline_options.picture_description_options = PictureDescriptionVlmOptions(
-                repo_id=repo_id,
+                repo_id=model_to_use,
                 prompt=prompt
             )
         elif vlm_mode == VlmMode.API:
@@ -51,10 +52,10 @@ class ExtractionService:
                 logger.warning("VLM API mode requested but OPENAI_API_KEY is not set. Skipping image description.")
             else:
                 pipeline_options.do_picture_description = True
-                model = vlm_model_id if vlm_model_id else "gpt-4o"
+                model_to_use = vlm_model_id if vlm_model_id and vlm_model_id != "string" else "gpt-4o"
                 pipeline_options.picture_description_options = PictureDescriptionApiOptions(
                     api_key=settings.OPENAI_API_KEY,
-                    model=model,
+                    model=model_to_use,
                     prompt=prompt
                 )
         
@@ -115,7 +116,7 @@ class ExtractionService:
                 tables=tables,
                 metadata={
                     "filename": file.filename,
-                    "page_count": doc.num_pages
+                    "page_count": doc.num_pages() if callable(doc.num_pages) else doc.num_pages
                 }
             )
 
@@ -162,7 +163,7 @@ class ExtractionService:
             tables=tables,
             metadata={
                 "filename": path_obj.name,
-                "page_count": doc.num_pages
+                "page_count": doc.num_pages() if callable(doc.num_pages) else doc.num_pages
             }
         )
 
