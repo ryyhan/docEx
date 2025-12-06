@@ -4,7 +4,7 @@ DocEx is a robust document extraction backend built with [FastAPI](https://fasta
 
 ## Features
 
--   **Document Conversion**: Converts documents to clean Markdown format.
+-   **Document Conversion**: Converts documents to clean Markdown format with automatic page numbering for multi-page PDFs.
 -   **Table Extraction**: Identifies and extracts tables from documents into structured data (JSON/DataFrame-ready).
 -   **FastAPI Powered**: High-performance, easy-to-use REST API.
 -   **Docker Ready**: Includes a Dockerfile for easy containerization and deployment.
@@ -104,13 +104,10 @@ Triggers the download and loading of OCR and Table Extraction models. Call this 
 ```json
 {
   "message": "Warmup completed successfully"
-}
-```
-
 **Response:**
 ```json
 {
-  "markdown": "# Document Title\n\nContent...",
+  "markdown": "## Page 1\n\n# Document Title\n\nContent...\n\n---\n## Page 2\n\nMore content...",
   "tables": [
     {
       "data": [["Row 1 Col 1", "Row 1 Col 2"], ["Row 2 Col 1", "Row 2 Col 2"]],

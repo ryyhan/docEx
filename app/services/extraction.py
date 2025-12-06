@@ -108,7 +108,24 @@ class ExtractionService:
                 headers = grid.columns.tolist()
                 tables.append(TableData(data=data, headers=headers))
 
-            markdown_content = doc.export_to_markdown()
+            # Export to markdown with page break markers
+            markdown_content = doc.export_to_markdown(page_break_placeholder="\n\n---\n## PAGE_BREAK_MARKER\n\n")
+            
+            # Post-process to add actual page numbers
+            page_counter = 1
+            markdown_lines = []
+            for line in markdown_content.split('\n'):
+                if line.strip() == "## PAGE_BREAK_MARKER":
+                    page_counter += 1
+                    markdown_lines.append(f"## Page {page_counter}")
+                else:
+                    markdown_lines.append(line)
+            
+            # Add page 1 marker at the beginning if there are multiple pages
+            if page_counter > 1:
+                markdown_content = f"## Page 1\n\n" + '\n'.join(markdown_lines)
+            else:
+                markdown_content = '\n'.join(markdown_lines)
             
             logger.info("Extraction completed successfully")
             
@@ -153,7 +170,24 @@ class ExtractionService:
         doc = result.document
         
         # Extract markdown
-        markdown_content = doc.export_to_markdown()
+        # Export to markdown with page break markers
+        markdown_content = doc.export_to_markdown(page_break_placeholder="\n\n---\n## PAGE_BREAK_MARKER\n\n")
+        
+        # Post-process to add actual page numbers
+        page_counter = 1
+        markdown_lines = []
+        for line in markdown_content.split('\n'):
+            if line.strip() == "## PAGE_BREAK_MARKER":
+                page_counter += 1
+                markdown_lines.append(f"## Page {page_counter}")
+            else:
+                markdown_lines.append(line)
+        
+        # Add page 1 marker at the beginning if there are multiple pages
+        if page_counter > 1:
+            markdown_content = f"## Page 1\n\n" + '\n'.join(markdown_lines)
+        else:
+            markdown_content = '\n'.join(markdown_lines)
         
         # Extract tables
         tables = []

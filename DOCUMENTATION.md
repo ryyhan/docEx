@@ -58,7 +58,7 @@ Same as `/extract`, but also saves the resulting Markdown file to the server's `
 ### Response Structure
 The API returns a JSON object with the following fields:
 
-- **`markdown`** (string): The full document content converted to Markdown format. Tables are represented as Markdown tables, and images are described (if VLM is enabled).
+- **`markdown`** (string): The full document content converted to Markdown format. Multi-page PDFs will include page separators (e.g., `## Page 2`) between pages. Tables are represented as Markdown tables, and images are described (if VLM is enabled).
 - **`tables`** (list): A list of extracted tables. Each item contains:
     - `data`: 2D array of cell values.
     - `headers`: List of column headers.
