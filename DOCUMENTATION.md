@@ -80,6 +80,28 @@ Triggers the download and loading of necessary models to ensure subsequent reque
 | `vlm_mode` | Enum | `none` | If set to `local` or `api`, will also preload VLM models/clients. |
 | `vlm_model_id` | String | `None` | Specific model ID to preload. |
 
+### `POST /api/v1/batch-extract`
+
+Process multiple PDF files in a single request.
+
+**Parameters (Form Data):**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `files` | List[File] | Required | Multiple document files to upload. |
+| `ocr_enabled` | Boolean | `true` | Enable OCR for scanned documents. |
+| `table_extraction_enabled` | Boolean | `true` | Enable table structure recognition. |
+| `vlm_mode` | Enum | `none` | Image Description mode. Options: `none`, `local`, `api`. |
+| `vlm_model_id` | String | `None` | Specific model ID to use. |
+
+**Response:** JSON object containing:
+- `results`: Array of individual file results (each with `filename`, `status`, `markdown`, `tables`, `metadata`, or `error`)
+- `total_files`: Total number of files processed
+- `successful`: Count of successfully processed files
+- `failed`: Count of failed files
+
+**Note:** Individual file failures won't stop processing of other files.
+
 ### Error Codes
 The API uses standard HTTP status codes to indicate success or failure.
 
@@ -410,12 +432,13 @@ services:
    ```
 
 ---
+```
 
 ## Programmatic Usage (Library Mode)
 
 You can use DocEx as a Python library in your own scripts without running the API server.
 
-### Example
+### Single File Extraction
 ```python
 import asyncio
 from app.services.extraction import ExtractionService
@@ -436,6 +459,50 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+### Batch Processing Multiple Files
+```python
+import asyncio
+from pathlib import Path
+from app.services.extraction import ExtractionService
+from app.schemas.enums import VlmMode
+
+async def batch_process():
+    service = ExtractionService()
+    files = ["invoice1.pdf", "invoice2.pdf", "invoice3.pdf"]
+    results = []
+    
+    for file_path in files:
+        try:
+            result = await service.extract_from_path(
+                file_path=file_path,
+                ocr_enabled=True,
+                vlm_mode=VlmMode.API
+            )
+            results.append({
+                "filename": file_path,
+                "status": "success",
+                "markdown": result.markdown,
+                "page_count": result.metadata["page_count"]
+            })
+            print(f"✓ Processed {file_path}")
+        except Exception as e:
+            results.append({
+                "filename": file_path,
+                "status": "error",
+                "error": str(e)
+            })
+            print(f"✗ Failed {file_path}: {e}")
+    
+    # Summary
+    successful = sum(1 for r in results if r["status"] == "success")
+    print(f"\nProcessed {len(files)} files: {successful} successful, {len(files)-successful} failed")
+    
+    return results
+
+if __name__ == "__main__":
+    results = asyncio.run(batch_process())
 ```
 
 ---
