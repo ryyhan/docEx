@@ -228,7 +228,7 @@ curl -X POST \
   http://localhost:8000/api/v1/extract
 ```
 
-**Example: Using a specific OpenAI model**
+**Example: Using a specific API model**
 ```bash
 curl -X POST \
   -F "file=@/path/to/document.pdf" \
@@ -237,7 +237,66 @@ curl -X POST \
   http://localhost:8000/api/v1/extract
 ```
 
-### 4. Performance Considerations & Best Practices
+### 4. Batch Processing
+
+Process **multiple PDF files** in a single API request.
+
+**Endpoint:** `POST /api/v1/batch-extract`
+
+**Features:**
+- Upload multiple files at once
+- Individual success/error status per file
+- One file failing won't stop others
+- Returns summary statistics
+
+**Basic Example:**
+```bash
+curl -X POST http://localhost:8000/api/v1/batch-extract \
+  -F "files=@invoice1.pdf" \
+  -F "files=@invoice2.pdf" \
+  -F "files=@invoice3.pdf" \
+  -F "ocr_enabled=true"
+```
+
+**With VLM:**
+```bash
+curl -X POST http://localhost:8000/api/v1/batch-extract \
+  -F "files=@doc1.pdf" \
+  -F "files=@doc2.pdf" \
+  -F "vlm_mode=api" \
+  -F "table_extraction_enabled=true"
+```
+
+**Response Format:**
+```json
+{
+  "results": [
+    {
+      "filename": "invoice1.pdf",
+      "status": "success",
+      "markdown": "## Page 1\n\n...",
+      "tables": [],
+      "metadata": {"page_count": 2}
+    },
+    {
+      "filename": "invoice2.pdf",
+      "status": "error",
+      "error": "File corrupted"
+    }
+  ],
+  "total_files": 2,
+  "successful": 1,
+  "failed": 1
+}
+```
+
+**Use Cases:**
+- Process 50 invoices for accounting
+- Batch convert contracts for analysis
+- Screen multiple resumes
+- Migrate document archives
+
+### 5. Performance Considerations & Best Practices
 
 #### OCR vs. Digital PDFs
 - **Digital PDFs**: Documents created directly from text editors (Word, Google Docs, LaTeX). These contain embedded text.
