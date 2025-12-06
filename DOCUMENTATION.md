@@ -17,7 +17,10 @@ The application is configured via environment variables. You can set these in a 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `STORAGE_DIR` | Directory where extracted files are saved (for `/extract-and-save`). | `./results` | No |
-| `OPENAI_API_KEY` | API Key for OpenAI. Required if using `vlm_mode="api"`. | `None` | Conditional |
+| `VLM_API_PROVIDER` | VLM API provider. Options: `openai`, `groq`, `anthropic`, `google`, `azure`, `custom`. | `openai` | No |
+| `VLM_API_KEY` | API key for the selected VLM provider. | `None` | Conditional (required for `vlm_mode=api`) |
+| `VLM_API_BASE_URL` | Custom API endpoint URL (for Azure or custom providers). | `None` | Conditional (required for Azure/custom) |
+| `OPENAI_API_KEY` | **Deprecated.** Use `VLM_API_KEY` instead. Legacy support maintained. | `None` | No |
 | `VLM_PROMPT` | Custom prompt for image description. Set to `"default"` to use the built-in optimized prompt. | `"default"` | No |
 | `DEBUG` | Enable debug logging. | `False` | No |
 
@@ -139,10 +142,74 @@ curl -X POST \
   http://localhost:8000/api/v1/extract
 ```
 
-#### API Mode (High Quality)
-Uses OpenAI (default: `gpt-4o`). Requires `OPENAI_API_KEY` to be set.
+#### API Mode - Multi-Provider Support
+
+DocEx supports multiple VLM API providers. Configure the provider in your `.env` file:
 
 ```bash
+# .env file
+VLM_API_PROVIDER=groq  # Options: openai, groq, anthropic, google, azure, custom
+VLM_API_KEY=your-api-key-here
+```
+
+**Supported Providers:**
+
+| Provider | Default Model | Notes |
+|----------|---------------|-------|
+| `openai` | gpt-4o | OpenAI GPT-4 with vision |
+| `groq` | llama-3.2-11b-vision-preview | Fast, free tier available |
+| `anthropic` | claude-3-5-sonnet-20241022 | High quality vision understanding |
+| `google` | gemini-1.5-pro | Google's multimodal model |
+| `azure` | gpt-4o | Requires custom endpoint URL |
+| `custom` | gpt-4o | Any OpenAI-compatible API |
+
+**Example: Groq (Fast & Free)**
+```bash
+# .env
+VLM_API_PROVIDER=groq
+VLM_API_KEY=gsk_your_groq_key
+
+# API Request
+curl -X POST \
+  -F "file=@/path/to/document.pdf" \
+  -F "vlm_mode=api" \
+  http://localhost:8000/api/v1/extract
+```
+
+**Example: Google Gemini**
+```bash
+# .env
+VLM_API_PROVIDER=google
+VLM_API_KEY=your_google_api_key
+
+# API Request (uses gemini-1.5-pro by default)
+curl -X POST \
+  -F "file=@/path/to/document.pdf" \
+  -F "vlm_mode=api" \
+  http://localhost:8000/api/v1/extract
+```
+
+**Example: Anthropic Claude**
+```bash
+# .env
+VLM_API_PROVIDER=anthropic
+VLM_API_KEY=sk-ant-your_key
+
+# API Request
+curl -X POST \
+  -F "file=@/path/to/document.pdf" \
+  -F "vlm_mode=api" \
+  http://localhost:8000/api/v1/extract
+```
+
+**Example: Azure OpenAI**
+```bash
+# .env
+VLM_API_PROVIDER=azure
+VLM_API_KEY=your_azure_key
+VLM_API_BASE_URL=https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions?api-version=2024-02-15-preview
+
+# API Request
 curl -X POST \
   -F "file=@/path/to/document.pdf" \
   -F "vlm_mode=api" \
@@ -161,7 +228,7 @@ curl -X POST \
   http://localhost:8000/api/v1/extract
 ```
 
-**Example: Using a specific OpenAI model**
+**Example: Using a specific API model**
 ```bash
 curl -X POST \
   -F "file=@/path/to/document.pdf" \
@@ -170,7 +237,66 @@ curl -X POST \
   http://localhost:8000/api/v1/extract
 ```
 
-### 4. Performance Considerations & Best Practices
+### 4. Batch Processing
+
+Process **multiple PDF files** in a single API request.
+
+**Endpoint:** `POST /api/v1/batch-extract`
+
+**Features:**
+- Upload multiple files at once
+- Individual success/error status per file
+- One file failing won't stop others
+- Returns summary statistics
+
+**Basic Example:**
+```bash
+curl -X POST http://localhost:8000/api/v1/batch-extract \
+  -F "files=@invoice1.pdf" \
+  -F "files=@invoice2.pdf" \
+  -F "files=@invoice3.pdf" \
+  -F "ocr_enabled=true"
+```
+
+**With VLM:**
+```bash
+curl -X POST http://localhost:8000/api/v1/batch-extract \
+  -F "files=@doc1.pdf" \
+  -F "files=@doc2.pdf" \
+  -F "vlm_mode=api" \
+  -F "table_extraction_enabled=true"
+```
+
+**Response Format:**
+```json
+{
+  "results": [
+    {
+      "filename": "invoice1.pdf",
+      "status": "success",
+      "markdown": "## Page 1\n\n...",
+      "tables": [],
+      "metadata": {"page_count": 2}
+    },
+    {
+      "filename": "invoice2.pdf",
+      "status": "error",
+      "error": "File corrupted"
+    }
+  ],
+  "total_files": 2,
+  "successful": 1,
+  "failed": 1
+}
+```
+
+**Use Cases:**
+- Process 50 invoices for accounting
+- Batch convert contracts for analysis
+- Screen multiple resumes
+- Migrate document archives
+
+### 5. Performance Considerations & Best Practices
 
 #### OCR vs. Digital PDFs
 - **Digital PDFs**: Documents created directly from text editors (Word, Google Docs, LaTeX). These contain embedded text.
