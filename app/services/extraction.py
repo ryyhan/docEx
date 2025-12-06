@@ -18,6 +18,28 @@ from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
+# VLM Provider Configuration
+VLM_PROVIDER_URLS = {
+    "openai": "https://api.openai.com/v1/chat/completions",
+    "groq": "https://api.groq.com/openai/v1/chat/completions",
+    "anthropic": "https://api.anthropic.com/v1/messages",
+    "google": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    "azure": None,  # Requires custom endpoint from user
+    "custom": None,  # User must provide VLM_API_BASE_URL
+}
+
+def get_default_vlm_model(provider: str) -> str:
+    """Get default model for a given VLM provider."""
+    defaults = {
+        "openai": "gpt-4o",
+        "groq": "llama-3.2-11b-vision-preview",  # 90b version decommissioned
+        "anthropic": "claude-3-5-sonnet-20241022",
+        "google": "gemini-1.5-pro",
+        "azure": "gpt-4o",
+        "custom": "gpt-4o",  # Fallback
+    }
+    return defaults.get(provider.lower(), "gpt-4o")
+
 DEFAULT_VLM_PROMPT = """
 Analyze the provided image and extract all relevant information.
 If the image contains text, transcribe it accurately.
@@ -53,14 +75,48 @@ class ExtractionService:
             )
         elif vlm_mode == VlmMode.API:
             logger.info(f"API VLM mode detected")
-            if not settings.OPENAI_API_KEY:
-                logger.warning("VLM API mode requested but OPENAI_API_KEY is not set. Skipping image description.")
+            
+            # Get provider and API key (with backward compatibility)
+            provider = settings.VLM_API_PROVIDER.lower()
+            api_key = settings.VLM_API_KEY or settings.OPENAI_API_KEY
+            
+            if not api_key:
+                logger.warning(f"VLM API mode requested but VLM_API_KEY/OPENAI_API_KEY is not set. Skipping image description.")
             else:
+                # Determine API URL
+                if settings.VLM_API_BASE_URL:
+                    # User provided custom URL
+                    api_url = settings.VLM_API_BASE_URL
+                    logger.info(f"Using custom VLM API URL: {api_url}")
+                elif provider in VLM_PROVIDER_URLS and VLM_PROVIDER_URLS[provider]:
+                    # Use predefined provider URL
+                    api_url = VLM_PROVIDER_URLS[provider]
+                    logger.info(f"Using {provider} VLM provider at: {api_url}")
+                else:
+                    logger.error(f"Unknown VLM provider '{provider}' and no VLM_API_BASE_URL provided. Supported providers: {list(VLM_PROVIDER_URLS.keys())}")
+                    return pipeline_options
+                
+                # Determine model to use
+                if vlm_model_id and vlm_model_id != "string":
+                    model_to_use = vlm_model_id
+                else:
+                    model_to_use = get_default_vlm_model(provider)
+                    logger.info(f"Using default model for {provider}: {model_to_use}")
+                
+                # Enable remote services for API calls
+                pipeline_options.enable_remote_services = True
                 pipeline_options.do_picture_description = True
-                model_to_use = vlm_model_id if vlm_model_id and vlm_model_id != "string" else "gpt-4o"
+                
+                # Format API key as Bearer token in header
+                headers = {"Authorization": f"Bearer {api_key}"}
+                
+                # Add model to request params
+                params = {"model": model_to_use}
+                
                 pipeline_options.picture_description_options = PictureDescriptionApiOptions(
-                    api_key=settings.OPENAI_API_KEY,
-                    model=model_to_use,
+                    url=api_url,
+                    headers=headers,
+                    params=params,
                     prompt=prompt,
                     picture_area_threshold=0  # Process all images regardless of size
                 )
