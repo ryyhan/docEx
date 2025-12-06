@@ -31,6 +31,8 @@ class ExtractionService:
         self.converter = DocumentConverter()
 
     def _get_pipeline_options(self, ocr_enabled: bool, table_extraction_enabled: bool, vlm_mode: VlmMode = VlmMode.NONE, vlm_model_id: Optional[str] = None) -> PdfPipelineOptions:
+        logger.info(f"_get_pipeline_options called - vlm_mode: {vlm_mode} (type: {type(vlm_mode)}), vlm_model_id: {vlm_model_id}")
+        
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = ocr_enabled
         pipeline_options.do_table_structure = table_extraction_enabled
@@ -40,14 +42,17 @@ class ExtractionService:
         prompt = settings.VLM_PROMPT if settings.VLM_PROMPT != "default" else DEFAULT_VLM_PROMPT
         
         if vlm_mode == VlmMode.LOCAL:
+            logger.info(f"LOCAL VLM mode detected - initializing VLM")
             pipeline_options.do_picture_description = True
             # Handle case where Swagger UI sends "string" as value
             model_to_use = vlm_model_id if vlm_model_id and vlm_model_id != "string" else "HuggingFaceTB/SmolVLM-256M-Instruct"
             pipeline_options.picture_description_options = PictureDescriptionVlmOptions(
                 repo_id=model_to_use,
-                prompt=prompt
+                prompt=prompt,
+                picture_area_threshold=0  # Process all images regardless of size
             )
         elif vlm_mode == VlmMode.API:
+            logger.info(f"API VLM mode detected")
             if not settings.OPENAI_API_KEY:
                 logger.warning("VLM API mode requested but OPENAI_API_KEY is not set. Skipping image description.")
             else:
@@ -56,8 +61,11 @@ class ExtractionService:
                 pipeline_options.picture_description_options = PictureDescriptionApiOptions(
                     api_key=settings.OPENAI_API_KEY,
                     model=model_to_use,
-                    prompt=prompt
+                    prompt=prompt,
+                    picture_area_threshold=0  # Process all images regardless of size
                 )
+        else:
+            logger.info(f"VLM mode is NONE - skipping picture description")
         
         return pipeline_options
 

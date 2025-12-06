@@ -22,6 +22,11 @@ async def extract_document(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
+    # Debug logging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received extract request - vlm_mode: {vlm_mode}, vlm_model_id: {vlm_model_id}, ocr: {ocr_enabled}, tables: {table_extraction_enabled}")
+    
     try:
         return await service.extract(file, ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
     except Exception as e:
@@ -38,6 +43,11 @@ async def extract_and_save_document(
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
+    
+    # Debug logging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received extract-and-save request - vlm_mode: {vlm_mode}, vlm_model_id: {vlm_model_id}, ocr: {ocr_enabled}, tables: {table_extraction_enabled}")
     
     try:
         extraction_response = await service.extract(file, ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
