@@ -2,70 +2,79 @@
 
 DocEx is a robust document extraction backend built with [FastAPI](https://fastapi.tiangolo.com/) and [Docling](https://github.com/DS4SD/docling). It provides a simple yet powerful API to convert documents (PDFs, etc.) into structured Markdown and table data.
 
+# DocEx-Serve
+
+A powerful FastAPI-based document extraction service with multi-provider VLM support, batch processing, and multiple output formats.
+
 ## Features
 
--   **Document Conversion**: Converts documents to clean Markdown format with automatic page numbering for multi-page PDFs.
--   **Table Extraction**: Identifies and extracts tables from documents into structured data (JSON/DataFrame-ready).
--   **FastAPI Powered**: High-performance, easy-to-use REST API.
--   **Docker Ready**: Includes a Dockerfile for easy containerization and deployment.
--   **Performance Optimized**: Configurable OCR and Table Extraction settings.
--   **Image Description**: Optional VLM support (Local or API) to describe images in documents.
--   **Warmup Endpoint**: Pre-load models for faster first-request performance.
--   **Swagger UI**: Automatic interactive API documentation.
-
-## Requirements
-
--   Python 3.11+
--   Docker (optional, for containerized execution)
+- 📄 **PDF Extraction** - Convert PDFs to markdown with preserved structure
+- 🔍 **OCR Support** - Extract text from scanned documents
+- 📊 **Table Extraction** - Preserve table structure
+- 🖼️ **Image Descriptions** - AI-powered image descriptions via VLM
+- 🔄 **Multi-Provider VLM** - OpenAI, Groq, Anthropic, Google Gemini, Azure
+- 📦 **Batch Processing** - Process multiple PDFs in one request
+- 📋 **Multiple Output Formats** - Markdown, JSON, HTML, Plain Text
+- 📄 **Page Numbers** - Automatic page numbering in multi-page PDFs
 
 ## Installation
 
-### Local Development
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd docEx
-    ```
-
-2.  **Create a virtual environment:**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
-
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Usage
-
-### Running Locally
-
-Start the development server:
+### Option 1: Install from PyPI (Recommended)
 
 ```bash
-uvicorn app.main:app --reload
+pip install docex-serve
 ```
 
-The API will be available at `http://localhost:8000`.
+### Option 2: Install from Source
 
-### Running with Docker
+```bash
+git clone https://github.com/ryyhan/docEx.git
+cd docEx
+pip install -r requirements.txt
+```
 
-1.  **Build the Docker image:**
-    ```bash
-    docker build -t docex .
-    ```
+### Option 3: Docker
 
-2.  **Run the container:**
-    ```bash
-    docker run -p 8000:8000 docex
-    ```
+```bash
+docker pull rehank25/docex-serve
+docker run -p 8000:8000 docex-serve
+```
 
-## API Documentation
+## Quick Start
 
-Once the server is running, you can access the interactive API documentation at:
+### Start the Server
+
+**After pip install:**
+```bash
+docex-server
+# Or with options
+docex-server --host 0.0.0.0 --port 8080
+```
+
+**Using Python:**
+```python
+from docex_serve import start_server
+start_server(port=8080)
+```
+
+**For development (from source):**
+```bash
+python3 main.py
+```
+
+Visit `http://localhost:8000/docs` for interactive API documentation.
+
+### Extract Your First Document
+
+```bash
+curl -X POST http://localhost:8000/api/v1/extract \
+  -F "file=@document.pdf" \
+  -F "ocr_enabled=true"
+```
+
+## Usage Examples
+
+### Basic Extraction
 
 -   **Swagger UI**: `http://localhost:8000/docs`
 -   **ReDoc**: `http://localhost:8000/redoc`

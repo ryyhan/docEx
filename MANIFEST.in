@@ -1,0 +1,5 @@
+include README.MD
+include LICENSE
+include requirements.txt
+include DOCUMENTATION.md
+recursive-include docex_serve *.py

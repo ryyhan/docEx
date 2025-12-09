@@ -1,11 +1,11 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from fastapi.responses import HTMLResponse, PlainTextResponse
-from app.services.extraction import ExtractionService
-from app.schemas.extraction import (
+from ..services.extraction import ExtractionService
+from ..schemas.extraction import (
     ExtractionResponse, BatchExtractionResponse, BatchFileResult,
     JsonExtractionResponse, HtmlExtractionResponse, TextExtractionResponse
 )
-from app.schemas.enums import VlmMode
+from ..schemas.enums import VlmMode
 from typing import Optional, List
 import logging
 

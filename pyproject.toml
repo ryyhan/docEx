@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_backend"
+
+[project]
+name = "docex-serve"
+version = "1.0.0"
+description = "Document extraction API with multi-provider VLM support"
+readme = "README.MD"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "ryyhan", email = "dayel.rehan@gmail.com"}
+]
+keywords = ["document", "extraction", "pdf", "vlm", "ocr", "fastapi", "docling"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/ryyhan/docEx"
+Documentation = "https://github.com/ryyhan/docEx#readme"
+Repository = "https://github.com/ryyhan/docEx"
+Issues = "https://github.com/ryyhan/docEx/issues"
+
+[project.scripts]
+docex-server = "docex_serve.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["docex_serve*"]

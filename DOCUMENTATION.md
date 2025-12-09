@@ -1,6 +1,71 @@
-# DocEx Project Documentation
+# DocEx-Serve Documentation
 
-DocEx is a high-performance, FastAPI-based microservice for document extraction. It leverages [Docling](https://github.com/DS4SD/docling) to convert PDF documents into structured Markdown, with optional support for OCR, Table Extraction, and Vision Language Models (VLM) for image description.
+**DocEx-Serve** is a FastAPI-based service that extracts structured content from PDFs and other documents using [Docling](https://github.com/DS4SD/docling). It provides OCR, table extraction, and multi-provider VLM (Vision Language Model) support for image descriptions.
+
+---
+
+## Installation
+
+### Option 1: Install from PyPI (Recommended)
+
+```bash
+pip install docex-serve
+```
+
+### Option 2: Install from Source
+
+```bash
+git clone https://github.com/ryyhan/docEx.git
+cd docEx
+pip install -r requirements.txt
+```
+
+### Option 3: Docker
+
+```bash
+docker pull rehank25/docex-serve  # Once published
+# Or build locally
+docker build -t docex-serve .
+docker run -p 8000:8000 docex-serve
+```
+
+---
+
+---
+
+## Quick Start
+
+### Start the Server
+
+**Using CLI (after pip install):**
+```bash
+docex-server
+# Or with options
+docex-server --host 0.0.0.0 --port 8080 --reload
+```
+
+**Using Python:**
+```python
+from docex_serve import start_server
+start_server(port=8080)
+```
+
+**Using local development:**
+```bash
+python3 main.py
+```
+
+### Extract Your First Document
+
+```bash
+curl -X POST http://localhost:8000/api/v1/extract \
+  -F "file=@document.pdf" \
+  -F "ocr_enabled=true"
+```
+
+Or visit http://localhost:8000/docs for the interactive API documentation.
+
+---
 
 ## Table of Contents
 - [Configuration](#configuration)
@@ -467,8 +532,7 @@ You can use DocEx as a Python library in your own scripts without running the AP
 ### Single File Extraction
 ```python
 import asyncio
-from app.services.extraction import ExtractionService
-from app.schemas.enums import VlmMode
+from docex_serve import ExtractionService, VlmMode
 
 async def main():
     service = ExtractionService()
@@ -491,8 +555,7 @@ if __name__ == "__main__":
 ```python
 import asyncio
 from pathlib import Path
-from app.services.extraction import ExtractionService
-from app.schemas.enums import VlmMode
+from docex_serve import ExtractionService, VlmMode
 
 async def batch_process():
     service = ExtractionService()
@@ -535,8 +598,7 @@ if __name__ == "__main__":
 
 ```python
 import asyncio
-from app.services.extraction import ExtractionService
-from app.schemas.enums import VlmMode
+from docex_serve import ExtractionService, VlmMode
 
 async def export_formats():
     service = ExtractionService()

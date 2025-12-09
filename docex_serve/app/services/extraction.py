@@ -10,9 +10,9 @@ from docling.datamodel.pipeline_options import (
     PictureDescriptionVlmOptions,
     PictureDescriptionApiOptions
 )
-from app.schemas.extraction import ExtractionResponse, TableData
-from app.schemas.enums import VlmMode
-from app.core.config import settings
+from ..schemas.extraction import ExtractionResponse, TableData
+from ..schemas.enums import VlmMode
+from ..core.config import settings
 import datetime
 from typing import Optional, Union
 
