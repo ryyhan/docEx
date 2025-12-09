@@ -102,6 +102,32 @@ Process multiple PDF files in a single request.
 
 **Note:** Individual file failures won't stop processing of other files.
 
+### `POST /api/v1/extract-json`
+
+Extract content and return as structured JSON.
+
+**Parameters:** Same as `/extract`
+
+**Response:** JSON object containing:
+- `content`: Structured document with `markdown` and `tables`
+- `metadata`: Document metadata
+
+### `POST /api/v1/extract-html`
+
+Extract content and return as formatted HTML.
+
+**Parameters:** Same as `/extract`
+
+**Response:** HTML document with CSS styling (Content-Type: `text/html`)
+
+### `POST /api/v1/extract-text`
+
+Extract content and return as plain text.
+
+**Parameters:** Same as `/extract`
+
+**Response:** Plain text without markdown formatting (Content-Type: `text/plain`)
+
 ### Error Codes
 The API uses standard HTTP status codes to indicate success or failure.
 
@@ -503,6 +529,63 @@ async def batch_process():
 
 if __name__ == "__main__":
     results = asyncio.run(batch_process())
+```
+
+### Using Different Output Formats
+
+```python
+import asyncio
+from app.services.extraction import ExtractionService
+from app.schemas.enums import VlmMode
+
+async def export_formats():
+    service = ExtractionService()
+    
+    # Extract once
+    result = await service.extract_from_path(
+        file_path="document.pdf",
+        ocr_enabled=True
+    )
+    
+    # JSON format (already structured)
+    json_output = {
+        "content": {
+            "markdown": result.markdown,
+            "tables": [{"data": t.data, "headers": t.headers} for t in result.tables]
+        },
+        "metadata": result.metadata
+    }
+    
+    # HTML format
+    import markdown
+    html_content = markdown.markdown(result.markdown, extensions=['tables'])
+    full_html = f"""<!DOCTYPE html>
+<html>
+<head><title>Document</title></head>
+<body>{html_content}</body>
+</html>"""
+    
+    # Plain text format (strip markdown)
+    import re
+    text = result.markdown
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)  # Remove headers
+    text = re.sub(r'[*_]{1,2}([^*_]+)[*_]{1,2}', r'\1', text)   # Remove bold/italic
+    
+    # Save to files
+    import json
+    with open("output.json", "w") as f:
+        json.dump(json_output, f, indent=2)
+    
+    with open("output.html", "w") as f:
+        f.write(full_html)
+    
+    with open("output.txt", "w") as f:
+        f.write(text)
+    
+    print("Exported to JSON, HTML, and TXT")
+
+if __name__ == "__main__":
+    asyncio.run(export_formats())
 ```
 
 ---

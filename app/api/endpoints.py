@@ -1,6 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from app.services.extraction import ExtractionService
-from app.schemas.extraction import ExtractionResponse, BatchExtractionResponse, BatchFileResult
+from app.schemas.extraction import (
+    ExtractionResponse, BatchExtractionResponse, BatchFileResult,
+    JsonExtractionResponse, HtmlExtractionResponse, TextExtractionResponse
+)
 from app.schemas.enums import VlmMode
 from typing import Optional, List
 import logging
@@ -134,3 +138,120 @@ async def batch_extract_documents(
         successful=successful,
         failed=failed
     )
+
+@router.post("/extract-json", response_model=JsonExtractionResponse)
+async def extract_document_json(
+    file: UploadFile = File(...),
+    ocr_enabled: bool = Form(True),
+    table_extraction_enabled: bool = Form(True),
+    vlm_mode: VlmMode = Form(VlmMode.NONE),
+    vlm_model_id: Optional[str] = Form(None),
+    service: ExtractionService = Depends(get_extraction_service)
+):
+    """
+    Extract content and return as structured JSON.
+    
+    Returns the full document structure in JSON format with all metadata.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received extract-json request for {file.filename}")
+    
+    try:
+        result = await service.extract(file, ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
+        # Convert document to dict/JSON - using markdown for now, can enhance later
+        return JsonExtractionResponse(
+            content={
+                "markdown": result.markdown,
+                "tables": [{"data": t.data, "headers": t.headers} for t in result.tables]
+            },
+            metadata=result.metadata
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/extract-html")
+async def extract_document_html(
+    file: UploadFile = File(...),
+    ocr_enabled: bool = Form(True),
+    table_extraction_enabled: bool = Form(True),
+    vlm_mode: VlmMode = Form(VlmMode.NONE),
+    vlm_model_id: Optional[str] = Form(None),
+    service: ExtractionService = Depends(get_extraction_service)
+):
+    """
+    Extract content and return as HTML.
+    
+    Returns the document formatted as HTML.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received extract-html request for {file.filename}")
+    
+    try:
+        result = await service.extract(file, ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
+        # Convert markdown to basic HTML
+        import markdown
+        html_content = markdown.markdown(result.markdown, extensions=['tables'])
+        
+        # Wrap in basic HTML structure
+        full_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{result.metadata.get('filename', 'Document')}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }}
+        table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
+        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        th {{ background-color: #f2f2f2; }}
+    </style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+        
+        return HTMLResponse(content=full_html)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/extract-text")
+async def extract_document_text(
+    file: UploadFile = File(...),
+    ocr_enabled: bool = Form(True),
+    table_extraction_enabled: bool = Form(True),
+    vlm_mode: VlmMode = Form(VlmMode.NONE),
+    vlm_model_id: Optional[str] = Form(None),
+    service: ExtractionService = Depends(get_extraction_service)
+):
+    """
+    Extract content and return as plain text.
+    
+    Returns the document as plain text without formatting.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received extract-text request for {file.filename}")
+    
+    try:
+        result = await service.extract(file, ocr_enabled, table_extraction_enabled, vlm_mode, vlm_model_id)
+        # Strip markdown formatting to get plain text
+        import re
+        text = result.markdown
+        # Remove markdown headers
+        text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+        # Remove markdown bold/italic
+        text = re.sub(r'[*_]{1,2}([^*_]+)[*_]{1,2}', r'\1', text)
+        # Remove markdown links
+        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+        
+        return PlainTextResponse(content=text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
