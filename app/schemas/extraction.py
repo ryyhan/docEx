@@ -29,3 +29,18 @@ class BatchExtractionResponse(BaseModel):
     total_files: int
     successful: int
     failed: int
+
+class JsonExtractionResponse(BaseModel):
+    """Structured JSON response with full document tree."""
+    content: Dict[str, Any]
+    metadata: Dict[str, Any]
+
+class HtmlExtractionResponse(BaseModel):
+    """HTML formatted response."""
+    html: str
+    metadata: Dict[str, Any]
+
+class TextExtractionResponse(BaseModel):
+    """Plain text response."""
+    text: str
+    metadata: Dict[str, Any]
